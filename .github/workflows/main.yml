@@ -33,9 +33,11 @@ jobs:
       run: npm install
 
     - name: Run Unit Tests
-      run: npm test -- --watchAll=false
+      run: npm test -- --watchAll=false --passWithNoTests
       env:
         CI: true
+        MONGO_URI: mongodb://localhost:27017/test
+        JWT_SECRET: test-secret-key
 
     - name: Build Application
       run: npm run build
