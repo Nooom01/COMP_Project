@@ -1,8 +1,60 @@
-const connectDB = require('../lib/mongodb');
-const Website = require('../lib/models/Website');
-const verifyToken = require('../lib/authMiddleware');
+import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 
-module.exports = async function handler(req, res) {
+// User Schema
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' }
+});
+
+// Website Schema
+const WebsiteSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  url: { type: String, required: true },
+  riskLevel: { type: String, enum: ['Low', 'Medium', 'High'], default: 'High' },
+  isProtected: { type: Boolean, default: false },
+  dateAdded: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+});
+
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
+const Website = mongoose.models.Website || mongoose.model('Website', WebsiteSchema);
+
+// Database connection
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(process.env.MONGO_URI).then((mongoose) => mongoose);
+  }
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
+
+function verifyToken(req) {
+  let token = req.headers['x-auth-token'];
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
+  if (!token) return { error: 'No token, authorization denied', status: 401 };
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return { user: decoded.user };
+  } catch (err) {
+    return { error: 'Token is not valid', status: 401 };
+  }
+}
+
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,7 +77,6 @@ module.exports = async function handler(req, res) {
     await connectDB();
 
     if (req.method === 'GET') {
-      // Get website by ID
       const website = await Website.findById(id).populate('createdBy', 'username');
       if (!website) {
         return res.status(404).json({ msg: 'Website not found' });
@@ -34,9 +85,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      // Update website
       const { name, url, riskLevel, isProtected } = req.body;
-
       const websiteFields = {};
       if (name) websiteFields.name = name;
       if (url) websiteFields.url = url;
@@ -48,32 +97,25 @@ module.exports = async function handler(req, res) {
         return res.status(404).json({ msg: 'Website not found' });
       }
 
-      website = await Website.findByIdAndUpdate(
-        id,
-        { $set: websiteFields },
-        { new: true }
-      );
-
+      website = await Website.findByIdAndUpdate(id, { $set: websiteFields }, { new: true });
       return res.json(website);
     }
 
     if (req.method === 'DELETE') {
-      // Delete website
       const website = await Website.findById(id);
       if (!website) {
         return res.status(404).json({ msg: 'Website not found' });
       }
-
       await Website.findByIdAndDelete(id);
       return res.json({ msg: 'Website removed' });
     }
 
     return res.status(405).json({ msg: 'Method not allowed' });
   } catch (err) {
-    console.error('Website error:', err.message);
+    console.error('Website error:', err);
     if (err.kind === 'ObjectId') {
       return res.status(404).json({ msg: 'Website not found' });
     }
-    return res.status(500).json({ msg: 'Server error' });
+    return res.status(500).json({ msg: 'Server error', error: err.message });
   }
-};
+}
