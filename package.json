@@ -29,6 +29,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "vercel-build": "react-scripts build",
     "server": "nodemon server.js",
     "dev": "concurrently \"npm run server\" \"npm start\"",
     "test": "react-scripts test --transformIgnorePatterns \"node_modules/(?!axios)/\"",
