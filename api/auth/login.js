@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -27,9 +27,9 @@ async function connectDB() {
   return cached.conn;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-auth-token');
@@ -46,6 +46,10 @@ export default async function handler(req, res) {
     await connectDB();
 
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ msg: 'Please provide email and password' });
+    }
 
     // Check if user exists
     let user = await User.findOne({ email });
@@ -73,4 +77,4 @@ export default async function handler(req, res) {
     console.error('Login error:', err);
     return res.status(500).json({ msg: 'Server error', error: err.message });
   }
-}
+};
