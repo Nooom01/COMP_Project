@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
     await connectDB();
 
     if (req.method === 'GET') {
-      const websites = await Website.find().populate('createdBy', 'username');
+      const websites = await Website.find({ createdBy: auth.user.id }).populate('createdBy', 'username');
       return res.json(websites);
     }
 

@@ -77,7 +77,7 @@ module.exports = async function handler(req, res) {
     await connectDB();
 
     if (req.method === 'GET') {
-      const website = await Website.findById(id).populate('createdBy', 'username');
+      const website = await Website.findOne({ _id: id, createdBy: auth.user.id }).populate('createdBy', 'username');
       if (!website) {
         return res.status(404).json({ msg: 'Website not found' });
       }
@@ -92,7 +92,7 @@ module.exports = async function handler(req, res) {
       if (riskLevel) websiteFields.riskLevel = riskLevel;
       if (isProtected !== undefined) websiteFields.isProtected = isProtected;
 
-      let website = await Website.findById(id);
+      let website = await Website.findOne({ _id: id, createdBy: auth.user.id });
       if (!website) {
         return res.status(404).json({ msg: 'Website not found' });
       }
@@ -102,7 +102,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      const website = await Website.findById(id);
+      const website = await Website.findOne({ _id: id, createdBy: auth.user.id });
       if (!website) {
         return res.status(404).json({ msg: 'Website not found' });
       }
